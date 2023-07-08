@@ -1,0 +1,33 @@
+# .gitignore
+
+# Python virtual environment
+venv/
+
+# Poetry
+.venv/
+.pytest_cache/
+poetry.lock
+
+# Editor/IDE specific
+.vscode/
+.idea/
+
+# Compiled Python files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Logs
+*.log
+log/
+logs/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Miscellaneous
+.DS_Store
+.env
