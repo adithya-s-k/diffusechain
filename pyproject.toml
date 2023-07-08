@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "diffusechain"
-version = "0.1.2"
+version = "0.1.3"
 description = ""
 authors = ["Adithya S K <adithyaskolavi@gmail.com>"]
 readme = "README.md"
@@ -8,7 +8,12 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.8"
 requests = "^2.31.0"
+pillow = "^10.0.0"
+aiohttp = "^3.8.4"
 
+
+[tool.poetry.group.dev.dependencies]
+ipykernel = "^6.24.0"
 
 [build-system]
 requires = ["poetry-core"]
