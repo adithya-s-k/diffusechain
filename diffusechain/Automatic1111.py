@@ -149,6 +149,12 @@ class Automatic1111:
                 baseurl = f"https://{host}:{port}/sdapi/v1"
             else:
                 baseurl = f"http://{host}:{port}/sdapi/v1"
+            print(baseurl)
+        else:
+            if baseurl[-1] == "/":
+                baseurl = baseurl[:-1]
+            baseurl = f"{baseurl}/sdapi/v1"
+            print(baseurl)
 
         self.baseurl = baseurl
         self.default_sampler = sampler
@@ -174,6 +180,7 @@ class Automatic1111:
 
     def _to_api_result(self, response):
         if response.status_code != 200:
+            # print(response.status_code)
             raise RuntimeError(response.status_code, response.text)
 
         r = response.json()
