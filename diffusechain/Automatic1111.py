@@ -584,7 +584,6 @@ class Automatic1111:
             f"{self.baseurl}/extra-batch-images", payload, use_async
         )
 
-    # XXX 500 error (2022/12/26)
     def png_info(self, image):
         payload = {
             "image": b64_img(image),
@@ -593,5 +592,448 @@ class Automatic1111:
         response = self.session.post(url=f"{self.baseurl}/png-info", json=payload)
         return self._to_api_result(response)
     
+    
+    def interrogate(self, image):
+        payload = {
+            "image": b64_img(image),
+        }
+
+        response = self.session.post(url=f"{self.baseurl}/interrogate", json=payload)
+        return self._to_api_result(response)
+
+    def interrupt(self):
+        response = self.session.post(url=f"{self.baseurl}/interrupt")
+        return response.json()
+
+    def skip(self):
+        response = self.session.post(url=f"{self.baseurl}/skip")
+        return response.json()
+
+    def get_options(self):
+        response = self.session.get(url=f"{self.baseurl}/options")
+        return response.json()
+
+    def set_options(self, options):
+        response = self.session.post(url=f"{self.baseurl}/options", json=options)
+        return response.json()
+
+    def get_cmd_flags(self):
+        response = self.session.get(url=f"{self.baseurl}/cmd-flags")
+        return response.json()
+
+    def get_progress(self):
+        response = self.session.get(url=f"{self.baseurl}/progress")
+        return response.json()
+
+    def get_cmd_flags(self):
+        response = self.session.get(url=f"{self.baseurl}/cmd-flags")
+        return response.json()
+
+    def get_samplers(self):
+        response = self.session.get(url=f"{self.baseurl}/samplers")
+        return response.json()
+
+    def get_sd_vae(self):
+        response = self.session.get(url=f"{self.baseurl}/sd-vae")
+        return response.json()
+
+    def get_upscalers(self):
+        response = self.session.get(url=f"{self.baseurl}/upscalers")
+        return response.json()
+
+    def get_latent_upscale_modes(self):
+        response = self.session.get(url=f"{self.baseurl}/latent-upscale-modes")
+        return response.json()
+
+    def get_loras(self):
+        response = self.session.get(url=f"{self.baseurl}/loras")
+        return response.json()
+
+    def get_sd_models(self):
+        response = self.session.get(url=f"{self.baseurl}/sd-models")
+        return response.json()
+
+    def get_hypernetworks(self):
+        response = self.session.get(url=f"{self.baseurl}/hypernetworks")
+        return response.json()
+
+    def get_face_restorers(self):
+        response = self.session.get(url=f"{self.baseurl}/face-restorers")
+        return response.json()
+
+    def get_realesrgan_models(self):
+        response = self.session.get(url=f"{self.baseurl}/realesrgan-models")
+        return response.json()
+
+    def get_prompt_styles(self):
+        response = self.session.get(url=f"{self.baseurl}/prompt-styles")
+        return response.json()
+
+    def get_artist_categories(self):  # deprecated ?
+        response = self.session.get(url=f"{self.baseurl}/artist-categories")
+        return response.json()
+
+    def get_artists(self):  # deprecated ?
+        response = self.session.get(url=f"{self.baseurl}/artists")
+        return response.json()
+
+    def refresh_checkpoints(self):
+        response = self.session.post(url=f"{self.baseurl}/refresh-checkpoints")
+        return response.json()
+
+    def get_scripts(self):
+        response = self.session.get(url=f"{self.baseurl}/scripts")
+        return response.json()
+
+    def get_embeddings(self):
+        response = self.session.get(url=f"{self.baseurl}/embeddings")
+        return response.json()
+
+    def get_memory(self):
+        response = self.session.get(url=f"{self.baseurl}/memory")
+        return response.json()
+
+    def get_endpoint(self, endpoint, baseurl):
+        if baseurl:
+            return f"{self.baseurl}/{endpoint}"
+        else:
+            from urllib.parse import urlparse, urlunparse
+
+            parsed_url = urlparse(self.baseurl)
+            basehost = parsed_url.netloc
+            parsed_url2 = (parsed_url[0], basehost, endpoint, "", "", "")
+            return urlunparse(parsed_url2)
+
+    def custom_get(self, endpoint, baseurl=False):
+        url = self.get_endpoint(endpoint, baseurl)
+        response = self.session.get(url=url)
+        return response.json()
+
+    def custom_post(self, endpoint, payload={}, baseurl=False, use_async=False):
+        url = self.get_endpoint(endpoint, baseurl)
+        if use_async:
+            import asyncio
+
+            return asyncio.ensure_future(self.async_post(url=url, json=payload))
+        else:
+            response = self.session.post(url=url, json=payload)
+            return self._to_api_result(response)
+
+    def controlnet_version(self):
+        r = self.custom_get("controlnet/version")
+        return r["version"]
+
+    def controlnet_model_list(self):
+        r = self.custom_get("controlnet/model_list")
+        return r["model_list"]
+
+    def controlnet_module_list(self):
+        r = self.custom_get("controlnet/module_list")
+        return r["module_list"]
+
+    def controlnet_detect(
+        self, images, module="none", processor_res=512, threshold_a=64, threshold_b=64
+    ):
+        input_images = [b64_img(x) for x in images]
+        payload = {
+            "controlnet_module": module,
+            "controlnet_input_images": input_images,
+            "controlnet_processor_res": processor_res,
+            "controlnet_threshold_a": threshold_a,
+            "controlnet_threshold_b": threshold_b,
+        }
+        r = self.custom_post("controlnet/detect", payload=payload)
+        return r
+
+    def util_get_model_names(self):
+        return sorted([x["title"] for x in self.get_sd_models()])
+
+    def util_set_model(self, name, find_closest=True):
+        if find_closest:
+            name = name.lower()
+        models = self.util_get_model_names()
+        found_model = None
+        if name in models:
+            found_model = name
+        elif find_closest:
+            import difflib
+
+            def str_simularity(a, b):
+                return difflib.SequenceMatcher(None, a, b).ratio()
+
+            max_sim = 0.0
+            max_model = models[0]
+            for model in models:
+                sim = str_simularity(name, model)
+                if sim >= max_sim:
+                    max_sim = sim
+                    max_model = model
+            found_model = max_model
+        if found_model:
+            print(f"loading {found_model}")
+            options = {}
+            options["sd_model_checkpoint"] = found_model
+            self.set_options(options)
+            print(f"model changed to {found_model}")
+        else:
+            print("model not found")
+
+    def util_get_current_model(self):
+        return self.get_options()["sd_model_checkpoint"]
+
+    def util_wait_for_ready(self, check_interval=5.0):
+        import time
+
+        while True:
+            result = self.get_progress()
+            progress = result["progress"]
+            job_count = result["state"]["job_count"]
+            if progress == 0.0 and job_count == 0:
+                break
+            else:
+                print(f"[WAIT]: progress = {progress:.4f}, job_count = {job_count}")
+                time.sleep(check_interval)
+
+
+## Interface for extensions
+
+
+# https://github.com/mix1009/model-keyword
+@dataclass
+class ModelKeywordResult:
+    keywords: list
+    model: str
+    oldhash: str
+    match_source: str
+
+
+class ModelKeywordInterface:
+    def __init__(self, webuiapi):
+        self.api = webuiapi
+
+    def get_keywords(self):
+        result = self.api.custom_get("model_keyword/get_keywords")
+        keywords = result["keywords"]
+        model = result["model"]
+        oldhash = result["hash"]
+        match_source = result["match_source"]
+        return ModelKeywordResult(keywords, model, oldhash, match_source)
+
+
+# https://github.com/Klace/stable-diffusion-webui-instruct-pix2pix
+class InstructPix2PixInterface:
+    def __init__(self, webuiapi):
+        self.api = webuiapi
+
+    def img2img(
+        self,
+        images=[],
+        prompt: str = "",
+        negative_prompt: str = "",
+        output_batches: int = 1,
+        sampler: str = "Euler a",
+        steps: int = 20,
+        seed: int = 0,
+        randomize_seed: bool = True,
+        text_cfg: float = 7.5,
+        image_cfg: float = 1.5,
+        randomize_cfg: bool = False,
+        output_image_width: int = 512,
+    ):
+        init_images = [b64_img(x) for x in images]
+        payload = {
+            "init_images": init_images,
+            "prompt": prompt,
+            "negative_prompt": negative_prompt,
+            "output_batches": output_batches,
+            "sampler": sampler,
+            "steps": steps,
+            "seed": seed,
+            "randomize_seed": randomize_seed,
+            "text_cfg": text_cfg,
+            "image_cfg": image_cfg,
+            "randomize_cfg": randomize_cfg,
+            "output_image_width": output_image_width,
+        }
+        return self.api.custom_post("instruct-pix2pix/img2img", payload=payload)
+
+
+# https://github.com/Mikubill/sd-webui-controlnet
+class ControlNetInterface:
+    def __init__(self, webuiapi, show_deprecation_warning=True):
+        self.api = webuiapi
+        self.show_deprecation_warning = show_deprecation_warning
+
+    def print_deprecation_warning(self):
+        print(
+            "ControlNetInterface txt2img/img2img is deprecated. Please use normal txt2img/img2img with controlnet_units param"
+        )
+
+    def txt2img(
+        self,
+        prompt: str = "",
+        negative_prompt: str = "",
+        controlnet_input_image: [] = [],
+        controlnet_mask: [] = [],
+        controlnet_module: str = "",
+        controlnet_model: str = "",
+        controlnet_weight: float = 0.5,
+        controlnet_resize_mode: str = "Scale to Fit (Inner Fit)",
+        controlnet_lowvram: bool = False,
+        controlnet_processor_res: int = 512,
+        controlnet_threshold_a: int = 64,
+        controlnet_threshold_b: int = 64,
+        controlnet_guidance: float = 1.0,
+        enable_hr: bool = False,  # hiresfix
+        denoising_strength: float = 0.5,
+        hr_scale: float = 1.5,
+        hr_upscale: str = "Latent",
+        guess_mode: bool = True,
+        seed: int = -1,
+        subseed: int = -1,
+        subseed_strength: int = -1,
+        sampler_index: str = "Euler a",
+        batch_size: int = 1,
+        n_iter: int = 1,  # Iteration
+        steps: int = 20,
+        cfg_scale: float = 7,
+        width: int = 512,
+        height: int = 512,
+        restore_faces: bool = False,
+        override_settings: Dict[str, Any] = None,
+        override_settings_restore_afterwards: bool = True,
+    ):
+        if self.show_deprecation_warning:
+            self.print_deprecation_warning()
+
+        controlnet_input_image_b64 = [raw_b64_img(x) for x in controlnet_input_image]
+        controlnet_mask_b64 = [raw_b64_img(x) for x in controlnet_mask]
+
+        payload = {
+            "prompt": prompt,
+            "negative_prompt": negative_prompt,
+            "controlnet_input_image": controlnet_input_image_b64,
+            "controlnet_mask": controlnet_mask_b64,
+            "controlnet_module": controlnet_module,
+            "controlnet_model": controlnet_model,
+            "controlnet_weight": controlnet_weight,
+            "controlnet_resize_mode": controlnet_resize_mode,
+            "controlnet_lowvram": controlnet_lowvram,
+            "controlnet_processor_res": controlnet_processor_res,
+            "controlnet_threshold_a": controlnet_threshold_a,
+            "controlnet_threshold_b": controlnet_threshold_b,
+            "controlnet_guidance": controlnet_guidance,
+            "enable_hr": enable_hr,
+            "denoising_strength": denoising_strength,
+            "hr_scale": hr_scale,
+            "hr_upscale": hr_upscale,
+            "guess_mode": guess_mode,
+            "seed": seed,
+            "subseed": subseed,
+            "subseed_strength": subseed_strength,
+            "sampler_index": sampler_index,
+            "batch_size": batch_size,
+            "n_iter": n_iter,
+            "steps": steps,
+            "cfg_scale": cfg_scale,
+            "width": width,
+            "height": height,
+            "restore_faces": restore_faces,
+            "override_settings": override_settings,
+            "override_settings_restore_afterwards": override_settings_restore_afterwards,
+        }
+        return self.api.custom_post("controlnet/txt2img", payload=payload)
+
+    def img2img(
+        self,
+        init_images: [] = [],
+        mask: str = None,
+        mask_blur: int = 30,
+        inpainting_fill: int = 0,
+        inpaint_full_res: bool = True,
+        inpaint_full_res_padding: int = 1,
+        inpainting_mask_invert: int = 1,
+        resize_mode: int = 0,
+        denoising_strength: float = 0.7,
+        prompt: str = "",
+        negative_prompt: str = "",
+        controlnet_input_image: [] = [],
+        controlnet_mask: [] = [],
+        controlnet_module: str = "",
+        controlnet_model: str = "",
+        controlnet_weight: float = 1.0,
+        controlnet_resize_mode: str = "Scale to Fit (Inner Fit)",
+        controlnet_lowvram: bool = False,
+        controlnet_processor_res: int = 512,
+        controlnet_threshold_a: int = 64,
+        controlnet_threshold_b: int = 64,
+        controlnet_guidance: float = 1.0,
+        guess_mode: bool = True,
+        seed: int = -1,
+        subseed: int = -1,
+        subseed_strength: int = -1,
+        sampler_index: str = "",
+        batch_size: int = 1,
+        n_iter: int = 1,  # Iteration
+        steps: int = 20,
+        cfg_scale: float = 7,
+        width: int = 512,
+        height: int = 512,
+        restore_faces: bool = False,
+        include_init_images: bool = True,
+        override_settings: Dict[str, Any] = None,
+        override_settings_restore_afterwards: bool = True,
+    ):
+        if self.show_deprecation_warning:
+            self.print_deprecation_warning()
+
+        init_images_b64 = [raw_b64_img(x) for x in init_images]
+        controlnet_input_image_b64 = [raw_b64_img(x) for x in controlnet_input_image]
+        controlnet_mask_b64 = [raw_b64_img(x) for x in controlnet_mask]
+
+        payload = {
+            "init_images": init_images_b64,
+            "mask": raw_b64_img(mask) if mask else None,
+            "mask_blur": mask_blur,
+            "inpainting_fill": inpainting_fill,
+            "inpaint_full_res": inpaint_full_res,
+            "inpaint_full_res_padding": inpaint_full_res_padding,
+            "inpainting_mask_invert": inpainting_mask_invert,
+            "resize_mode": resize_mode,
+            "denoising_strength": denoising_strength,
+            "prompt": prompt,
+            "negative_prompt": negative_prompt,
+            "controlnet_input_image": controlnet_input_image_b64,
+            "controlnet_mask": controlnet_mask_b64,
+            "controlnet_module": controlnet_module,
+            "controlnet_model": controlnet_model,
+            "controlnet_weight": controlnet_weight,
+            "controlnet_resize_mode": controlnet_resize_mode,
+            "controlnet_lowvram": controlnet_lowvram,
+            "controlnet_processor_res": controlnet_processor_res,
+            "controlnet_threshold_a": controlnet_threshold_a,
+            "controlnet_threshold_b": controlnet_threshold_b,
+            "controlnet_guidance": controlnet_guidance,
+            "guess_mode": guess_mode,
+            "seed": seed,
+            "subseed": subseed,
+            "subseed_strength": subseed_strength,
+            "sampler_index": sampler_index,
+            "batch_size": batch_size,
+            "n_iter": n_iter,
+            "steps": steps,
+            "cfg_scale": cfg_scale,
+            "width": width,
+            "height": height,
+            "restore_faces": restore_faces,
+            "include_init_images": include_init_images,
+            "override_settings": override_settings,
+            "override_settings_restore_afterwards": override_settings_restore_afterwards,
+        }
+        return self.api.custom_post("controlnet/img2img", payload=payload)
+
+    def model_list(self):
+        r = self.api.custom_get("controlnet/model_list")
+        return r["model_list"]    
     
 

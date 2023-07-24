@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "diffusechain"
-version = "0.1.52"
+version = "0.1.6"
 description = ""
 authors = ["Adithya S K <adithyaskolavi@gmail.com>"]
 readme = "README.md"
